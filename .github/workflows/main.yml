@@ -37,6 +37,9 @@ jobs:
 
           echo "SSH_CREDS=User: $NEW_USER | Password: $PASSWD" >> $GITHUB_ENV
           echo "NEW_USER_PASS=$PASSWD" >> $GITHUB_ENV
+          
+          # --- هذا السطر ضروري لتمرير الاسم للخطوة الأخيرة ---
+          echo "NEW_USER_NAME=$NEW_USER" >> $GITHUB_ENV
 
       - name: Install Tailscale
         run: |
@@ -80,13 +83,16 @@ jobs:
         run: |
           echo -e "\n=== SSH ACCESS ==="
           echo "Connect to Tailscale IP: $TAILSCALE_IP"
-          echo "Username: toolboxusr"
+          
+          # --- هذا هو التعديل الضروري لطباعة اسم المستخدم الصحيح ---
+          echo "Username: ${{ env.NEW_USER_NAME }}"
+          
           echo "Password: ${{ env.NEW_USER_PASS }}"
           echo "Port: 22 (Default SSH)"
           echo "==================\n"
           
 
           while true; do
-              echo "[$(date)] SSH Active - Use Ctrl+C in workflow to terminate"
-              sleep 300
+            echo "[$(date)] SSH Active - Use Ctrl+C in workflow to terminate"
+            sleep 300
           done

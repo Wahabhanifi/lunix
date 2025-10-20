@@ -22,7 +22,7 @@ jobs:
           sudo systemctl start ssh
 
 
-          NEW_USER="admin"
+          NEW_USER="ramy"
 
           PASSWD="admin123" 
 

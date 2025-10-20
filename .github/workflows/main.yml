@@ -1,42 +1,37 @@
-name: Debian 12 Access via Tailscale (SSH)
+name: Debian 12
 
 on:
-  # يسمح بتشغيل السكربت يدوياً من واجهة GitHub
+
   workflow_dispatch:
 
 jobs:
   secure-access:
-    # استخدام أحدث نسخة من Ubuntu (Linux)
     runs-on: ubuntu-latest
-    # زيادة مهلة الجلسة إلى 6 ساعات كحد أقصى (360 دقيقة)
     timeout-minutes: 720
 
     steps:
       - name: Setup SSH Server and User
-        # استخدام أوامر Bash على نظام Linux
+
         run: |
-          # تثبيت خادم SSH وإعادة تشغيله
+
           sudo apt update
           sudo apt install -y openssh-server
           sudo systemctl enable ssh
           sudo systemctl start ssh
 
-          # إنشاء مستخدم وصول جديد (معلومات الاعتماد)
+
           NEW_USER="ramy"
-          # تعيين كلمة مرور بسيطة
           PASSWD="admin123" 
 
-          # إضافة المستخدم وتعيين كلمة المرور
+
           sudo useradd -m -s /bin/bash $NEW_USER
           echo "$NEW_USER:$PASSWD" | sudo chpasswd
           # إضافة المستخدم إلى مجموعة sudo
           sudo usermod -aG sudo $NEW_USER
 
-          # التأكد من أن SSH يسمح بتسجيل الدخول بكلمة المرور
           sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config
           sudo systemctl restart ssh
 
-          # عرض بيانات الاعتماد في سجلات البيئة
           echo "SSH_CREDS=User: $NEW_USER | Password: $PASSWD" >> $GITHUB_ENV
           echo "NEW_USER_PASS=$PASSWD" >> $GITHUB_ENV
 
@@ -61,13 +56,10 @@ jobs:
 
       - name: Establish Tailscale Connection
         run: |
-          # تشغيل وربط Tailscale باستخدام مفتاح المصادقة
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-debian-runner-$GITHUB_RUN_ID --timeout=30s
           
-          # الحصول على عنوان IP الخاص بـ Tailscale (IPv4)
           TS_IP=$(sudo tailscale ip -4)
 
-          # إيقاف مؤقت للتأكد من تعيين الـ IP
           sleep 5
 
           if [ -z "$TS_IP" ]; then
@@ -78,7 +70,7 @@ jobs:
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
 
       - name: Maintain Connection
-        # يبقي هذا الأمر السكربت قيد التشغيل لمدة المهلة المحددة
+
         run: |
           echo -e "\n=== SSH ACCESS ==="
           echo "Connect to Tailscale IP: $TAILSCALE_IP"
@@ -87,7 +79,6 @@ jobs:
           echo "Port: 22 (Default SSH)"
           echo "==================\n"
           
-          # حلقة لا نهائية للمحافظة على الجلسة نشطة
           while true; do
               echo "[$(date)] SSH Active - Use Ctrl+C in workflow to terminate"
               sleep 300

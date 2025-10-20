@@ -1,0 +1,92 @@
+name: Debian 12 Access via Tailscale (SSH)
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+  secure-access:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 720
+
+    steps:
+      - name: Setup SSH Server and User
+
+        run: |
+
+          sudo apt update
+          sudo apt install -y openssh-server
+          sudo systemctl enable ssh
+          sudo systemctl start ssh
+
+
+          NEW_USER="admin"
+
+          PASSWD="admin123" 
+
+          sudo useradd -m -s /bin/bash $NEW_USER
+          echo "$NEW_USER:$PASSWD" | sudo chpasswd
+
+          sudo usermod -aG sudo $NEW_USER
+
+
+          sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+          sudo systemctl restart ssh
+
+          echo "SSH_CREDS=User: $NEW_USER | Password: $PASSWD" >> $GITHUB_ENV
+          echo "NEW_USER_PASS=$PASSWD" >> $GITHUB_ENV
+
+      - name: Install Tailscale
+        run: |
+          echo "Setting up Tailscale repository for Ubuntu Noble..."
+
+          # 1. Download the GPG key and store it
+          # This key is necessary to resolve the NO_PUBKEY error
+          sudo curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.gpg | sudo gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+
+          # 2. Create the repository list file, pointing to 'noble' (Ubuntu 24.04)
+          # and referencing the stored GPG key for signing verification.
+          sudo sh -c "echo 'deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main' > /etc/apt/sources.list.d/tailscale.list"
+
+          # 3. Update package lists
+          # This should now succeed without the GPG error
+          sudo apt update
+
+          # 4. Install Tailscale
+          sudo apt install -y tailscale
+
+      - name: Establish Tailscale Connection
+        run: |
+
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-debian-runner-$GITHUB_RUN_ID --timeout=30s
+          
+
+          TS_IP=$(sudo tailscale ip -4)
+
+
+          sleep 5
+
+          if [ -z "$TS_IP" ]; then
+              echo "Tailscale IP not assigned. Exiting."
+              exit 1
+          fi
+
+          echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
+
+      - name: Maintain Connection
+
+        run: |
+          echo -e "\n=== SSH ACCESS ==="
+          echo "Connect to Tailscale IP: $TAILSCALE_IP"
+          echo "Username: toolboxusr"
+          echo "Password: ${{ env.NEW_USER_PASS }}"
+          echo "Port: 22 (Default SSH)"
+          echo "==================\n"
+          
+
+          while true; do
+              echo "[$(date)] SSH Active - Use Ctrl+C in workflow to terminate"
+              sleep 300
+          done

@@ -15,6 +15,8 @@ jobs:
         run: |
 
           sudo apt update
+          sudo apt upgrade
+          sudo apt-get install -y ffmpeg
           sudo apt install -y openssh-server
           sudo systemctl enable ssh
           sudo systemctl start ssh

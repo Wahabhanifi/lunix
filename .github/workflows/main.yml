@@ -7,7 +7,7 @@ on:
 jobs:
   secure-access:
     runs-on: ubuntu-latest
-    timeout-minutes: 720
+    timeout-minutes: 720 
 
     steps:
       - name: Setup SSH Server and User
